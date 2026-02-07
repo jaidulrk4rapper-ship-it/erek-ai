@@ -153,78 +153,32 @@ export default function ChatUI() {
       const signal = abortRef.current.signal
 
       try {
-        const response = await fetch("/api/chat/stream", {
+        const response = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ message: text, sessionId }),
           signal,
         })
 
+        const data = await response.json().catch(() => ({}))
         if (!response.ok) {
-          const data = await response.json().catch(() => ({}))
-          throw new Error(data?.error || data?.detail || `Request failed (${response.status})`)
+          throw new Error(data?.error || data?.userMessage || data?.detail || `Request failed (${response.status})`)
         }
 
-        const reader = response.body?.getReader()
-        if (!reader) throw new Error("No response body")
-
-        const decoder = new TextDecoder()
-        let buffer = ""
-        let lastEvent = ""
-        let streamReply = ""
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          buffer += decoder.decode(value, { stream: true })
-          const parts = buffer.split("\n\n")
-          buffer = parts.pop() ?? ""
-          for (const part of parts) {
-            const lines = part.split("\n")
-            let event = ""
-            let data = ""
-            for (const line of lines) {
-              if (line.startsWith("event: ")) event = line.slice(7).trim()
-              else if (line.startsWith("data: ")) data = line.slice(6)
-            }
-            if (event) lastEvent = event
-            if (data) {
-              try {
-                const obj = JSON.parse(data)
-                if (event === "chunk" && obj.chunk != null) {
-                  streamReply += obj.chunk
-                  setMessages((prev) => {
-                    const newMessages = [...prev]
-                    const last = newMessages[newMessages.length - 1]
-                    if (last?.role === "assistant")
-                      newMessages[newMessages.length - 1] = { ...last, content: streamReply }
-                    return newMessages
-                  })
-                  scrollToBottom()
-                } else if (event === "done" && obj.sessionId != null) {
-                  if (obj.sessionId) {
-                    setSessionId(obj.sessionId)
-                    localStorage.setItem("erek_session", obj.sessionId)
-                    loadSessions()
-                  }
-                  if (Array.isArray(obj.sources)) {
-                    setMessages((prev) => {
-                      const newMessages = [...prev]
-                      const last = newMessages[newMessages.length - 1]
-                      if (last?.role === "assistant")
-                        newMessages[newMessages.length - 1] = { ...last, sources: obj.sources }
-                      return newMessages
-                    })
-                  }
-                } else if (event === "error") {
-                  throw new Error(obj.detail || obj.error || "Stream error")
-                }
-              } catch (e) {
-                if (e instanceof Error && event === "error") throw e
-              }
-            }
-          }
+        const reply = String(data?.reply ?? "").trim()
+        setMessages((prev) => {
+          const newMessages = [...prev]
+          const last = newMessages[newMessages.length - 1]
+          if (last?.role === "assistant")
+            newMessages[newMessages.length - 1] = { ...last, content: reply }
+          return newMessages
+        })
+        if (data?.sessionId) {
+          setSessionId(data.sessionId)
+          localStorage.setItem("erek_session", data.sessionId)
+          loadSessions()
         }
+        scrollToBottom()
       } catch (err: unknown) {
         if (err instanceof Error && err.name === "AbortError") {
           setMessages((prev) => {

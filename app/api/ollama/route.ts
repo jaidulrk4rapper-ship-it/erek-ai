@@ -27,13 +27,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "message is required" }, { status: 400 })
   }
 
-  const prompt = `${SYSTEM_PROMPT}\nUser: ${message}\nEreK:`
+  const prompt = `${SYSTEM_PROMPT}\nuser: ${message}\nassistant:`
 
   try {
     const res = await withTimeout(
       fetch(`${OLLAMA_URL.replace(/\/$/, "")}/api/generate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           model: OLLAMA_MODEL,
           prompt,
@@ -48,11 +50,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `ollama_http_${res.status}`, detail: txt }, { status: 502 })
     }
 
-    const data: any = await res.json().catch(() => null)
-    const reply = String(data?.response ?? "").trim()
+    const data = await res.json()
 
-    return NextResponse.json({ reply })
-  } catch (e: any) {
-    return NextResponse.json({ error: "ollama_failed", detail: String(e?.message || e) }, { status: 502 })
+    return NextResponse.json({
+      role: "assistant",
+      content: data.response,
+    })
+  } catch (e: unknown) {
+    return NextResponse.json(
+      { error: "ollama_failed", detail: e instanceof Error ? e.message : "Stream error" },
+      { status: 502 }
+    )
   }
 }

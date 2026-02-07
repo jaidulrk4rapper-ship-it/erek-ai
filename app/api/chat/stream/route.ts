@@ -19,31 +19,33 @@ export async function POST(req: Request) {
       )
     }
 
-    const ollamaUrl = process.env.OLLAMA_URL!.replace(/\/$/, "")
-    const model = process.env.OLLAMA_MODEL ?? "llama3.1"
-    const endpoint = ollamaUrl.includes("/api/chat") ? ollamaUrl : `${ollamaUrl}/api/chat`
+    const prompt = messages
+      .map((m: { role: string; content: string }) => `${m.role}: ${m.content}`)
+      .join("\n")
+    const model = process.env.OLLAMA_MODEL ?? "llama3"
+    const baseUrl = (process.env.OLLAMA_URL ?? "").replace(/\/$/, "")
 
-    const ollamaRes = await fetch(endpoint, {
+    const res = await fetch(`${baseUrl}/api/generate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model,
-        messages,
+        prompt,
         stream: true,
       }),
     })
 
-    if (!ollamaRes.ok || !ollamaRes.body) {
-      const text = await ollamaRes.text()
+    if (!res.ok || !res.body) {
+      const text = await res.text()
       return NextResponse.json(
         { error: text || "Ollama stream failed" },
         { status: 500 }
       )
     }
 
-    return new Response(ollamaRes.body, {
+    return new Response(res.body, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",

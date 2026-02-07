@@ -62,8 +62,9 @@ TURSO_DATABASE_URL=https://your-db-name.turso.io
 TURSO_AUTH_TOKEN=your-turso-auth-token
 ADMIN_SECRET=your-long-random-secret
 
-OLLAMA_URL=https://your-ollama-host:11434
-OLLAMA_MODEL=llama3.1
+# Ollama base URL (we use /api/generate)
+OLLAMA_URL=https://your-ollama-host.trycloudflare.com
+OLLAMA_MODEL=llama3
 OLLAMA_TIMEOUT_MS=20000
 
 N8N_WEBHOOK_URL=
@@ -96,7 +97,8 @@ N8N_TIMEOUT_MS=8000
    Open `https://<your-app>.vercel.app/admin`. Enter the same value as `ADMIN_SECRET` when prompted; then you can load sessions, view messages, and delete sessions.
 
 7. **Ollama**  
-   Ensure `OLLAMA_URL` is reachable from Vercel (e.g. public URL or tunnel). If not, chat will fail until Ollama or an alternative (e.g. n8n) is configured.
+   Ensure `OLLAMA_URL` is reachable from Vercel (e.g. public URL or tunnel). If not, chat will fail until Ollama or an alternative (e.g. n8n) is configured.  
+   **ENV sanity:** `OLLAMA_URL` = base URL (no path). We call `/api/generate`. Example: `OLLAMA_URL=https://xxx.trycloudflare.com`, `OLLAMA_MODEL=llama3`.
 
 ---
 

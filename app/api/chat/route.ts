@@ -17,14 +17,17 @@ async function callOllamaDirect(prompt: string) {
   const OLLAMA_URL = process.env.OLLAMA_URL
   const OLLAMA_MODEL = process.env.OLLAMA_MODEL
   const timeoutMs = Number(process.env.OLLAMA_TIMEOUT_MS || 20000)
-
   if (!OLLAMA_URL || !OLLAMA_MODEL) throw new Error("OLLAMA_URL or OLLAMA_MODEL missing")
 
   const res = await withTimeout(
     fetch(`${OLLAMA_URL.replace(/\/$/, "")}/api/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: OLLAMA_MODEL, prompt, stream: false }),
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        prompt,
+        stream: false,
+      }),
     }),
     timeoutMs
   )
@@ -34,7 +37,7 @@ async function callOllamaDirect(prompt: string) {
     throw new Error(`ollama_http_${res.status}:${txt}`)
   }
 
-  const data: any = await res.json().catch(() => null)
+  const data = await res.json()
   return String(data?.response ?? "").trim()
 }
 
@@ -47,15 +50,14 @@ export async function POST(req: Request) {
   const recent = history.slice(-8)
 
   const transcript = recent
-    .map((m: any) => {
-      const role = m.role === "assistant" ? "EREK" : "User"
+    .map((m: { role: string; content: string }) => {
+      const role = m.role === "assistant" ? "assistant" : "user"
       const content = String(m.content ?? "").trim()
       return content ? `${role}: ${content}` : ""
     })
     .filter(Boolean)
     .join("\n")
-
-  const prompt = `${SYSTEM_PROMPT}\n${transcript}\nUser: ${message}\nEREK:`
+  const prompt = `${SYSTEM_PROMPT}\n${transcript}\nuser: ${message}\nassistant:`
 
   if (!message) {
     return NextResponse.json({ error: "message is required" }, { status: 400 })
