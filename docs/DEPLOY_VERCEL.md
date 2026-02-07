@@ -63,7 +63,7 @@ TURSO_AUTH_TOKEN=your-turso-auth-token
 ADMIN_SECRET=your-long-random-secret
 
 # Ollama base URL (we use /api/generate)
-OLLAMA_URL=https://your-ollama-host.trycloudflare.com
+OLLAMA_URL=https://location-agricultural-causes-sunset.trycloudflare.com
 OLLAMA_MODEL=llama3
 OLLAMA_TIMEOUT_MS=20000
 
@@ -98,7 +98,7 @@ N8N_TIMEOUT_MS=8000
 
 7. **Ollama**  
    Ensure `OLLAMA_URL` is reachable from Vercel (e.g. public URL or tunnel). If not, chat will fail until Ollama or an alternative (e.g. n8n) is configured.  
-   **ENV sanity:** `OLLAMA_URL` = base URL (no path). We call `/api/generate`. Example: `OLLAMA_URL=https://xxx.trycloudflare.com`, `OLLAMA_MODEL=llama3`.
+   **ENV sanity:** `OLLAMA_URL` = base URL (no path). We call `/api/generate`. Example: `OLLAMA_URL=https://location-agricultural-causes-sunset.trycloudflare.com`, `OLLAMA_MODEL=llama3`.
 
 ---
 
