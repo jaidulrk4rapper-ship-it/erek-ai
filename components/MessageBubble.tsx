@@ -4,48 +4,82 @@ import { useState } from "react"
 import ReactMarkdown from "react-markdown"
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
 import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism"
-import { FiCopy, FiCheck, FiRefreshCw } from "react-icons/fi"
+import type { MessageMeta } from "./MessageActions"
+import MessageActions from "./MessageActions"
+import NextSteps from "./NextSteps"
+import { generateNextSteps } from "@/lib/next-steps"
 
 export interface MessageBubbleMessage {
   role: string
   content: string
   sources?: string[]
+  id?: string
+  createdAt?: number
+  meta?: MessageMeta
+  rawContent?: string
+  /** Topic-based next steps from Erek's reply; when set, used instead of heuristics */
+  nextSteps?: string[]
 }
 
 interface MessageBubbleProps {
   message: MessageBubbleMessage
   isLast: boolean
+  messageIndex: number
   onRegenerate?: () => void
+  onNextStepSelect?: (text: string) => void
+  onCopy?: (messageId: string) => void
+  onLike?: (messageId: string, liked: boolean | null) => void
+  onToast?: (message: string) => void
+  onShowRaw?: (raw: string) => void
+  onPin?: (messageId: string) => void
+  onDelete?: (messageId: string) => void
 }
 
-export default function MessageBubble({ message, isLast, onRegenerate }: MessageBubbleProps) {
-  const [copied, setCopied] = useState(false)
+export default function MessageBubble({
+  message,
+  isLast,
+  messageIndex,
+  onRegenerate,
+  onNextStepSelect,
+  onCopy,
+  onLike,
+  onToast,
+  onShowRaw,
+  onPin,
+  onDelete,
+}: MessageBubbleProps) {
+  const [showRaw, setShowRaw] = useState(false)
+  const messageId = message.id ?? `msg-${messageIndex}`
+  const displayContent = showRaw && message.rawContent != null ? message.rawContent : message.content
+  const nextStepSuggestions =
+    message.role === "assistant" && message.content
+      ? (message.nextSteps && message.nextSteps.length > 0
+          ? message.nextSteps
+          : generateNextSteps(message.content))
+      : []
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(message.content)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleShowRaw = (raw: string) => {
+    if (onShowRaw) onShowRaw(raw)
+    else setShowRaw(true)
   }
 
   return (
     <div className={`group ${message.role === "user" ? "flex justify-end" : ""}`}>
       <div className={`flex gap-3 max-w-full ${message.role === "user" ? "flex-row-reverse" : ""}`}>
-        {/* No icon for user; assistant also has no logo */}
         <div className="w-8 h-8 flex-shrink-0 mt-1" aria-hidden />
 
-        {/* Message Content */}
         <div className="flex-1 min-w-0">
           <div
             className={`
             shadow-none
             ${message.role === "user"
-              ? "rounded-full px-4 py-3 bg-gray-600/50 dark:bg-white/10 text-white ml-auto max-w-[80%] font-[system-ui] border border-gray-500/50 dark:border-white/10"
+              ? "rounded-2xl px-4 py-2 bg-gray-600/50 dark:bg-white/10 text-white ml-auto max-w-[80%] font-[system-ui] border-none shadow-none"
               : "bg-transparent px-0 py-0 text-gray-900 dark:text-gray-100 border-none [font-family:var(--font-inter),var(--font-roboto),system-ui,sans-serif] [&_*]:border-none [&_h1]:border-none [&_h2]:border-none [&_h3]:border-none [&_hr]:border-none [&_pre]:border-none"
             }
           `}
           >
             {message.role === "assistant" ? (
-              <div className="prose prose-sm dark:prose-invert max-w-none [&_pre]:my-2 [&_p]:my-1 [&_ul]:my-2 [&_ol]:my-2 [&_*]:shadow-none [&_*]:border-none [&_h1]:border-0 [&_h2]:border-0 [&_h3]:border-0 [&_hr]:border-0 text-[inherit] [text-shadow:none]">
+              <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed [&_pre]:my-2 [&_p]:my-1.5 [&_p]:leading-relaxed [&_ul]:my-2 [&_ol]:my-2 [&_ul]:leading-relaxed [&_ol]:leading-relaxed [&_li]:my-0.5 [&_*]:shadow-none [&_*]:border-none [&_h1]:border-0 [&_h2]:border-0 [&_h3]:border-0 [&_hr]:border-0 [&_h1]:my-2 [&_h2]:my-1.5 [&_h3]:my-1.5 text-[inherit] [text-shadow:none]">
                 <ReactMarkdown
                   components={{
                     code(props) {
@@ -73,11 +107,11 @@ export default function MessageBubble({ message, isLast, onRegenerate }: Message
                     },
                   }}
                 >
-                  {message.content}
+                  {displayContent}
                 </ReactMarkdown>
               </div>
             ) : (
-              <p className="whitespace-pre-wrap font-[system-ui]">{message.content}</p>
+              <p className="whitespace-pre-wrap font-[system-ui] leading-snug py-0.5">{message.content}</p>
             )}
 
             {message.role === "assistant" && message.sources && message.sources.length > 0 && (
@@ -90,33 +124,35 @@ export default function MessageBubble({ message, isLast, onRegenerate }: Message
                 </ul>
               </div>
             )}
+
+            {message.role === "assistant" && nextStepSuggestions.length > 0 && onNextStepSelect && (
+              <NextSteps
+                suggestions={nextStepSuggestions}
+                onSelect={onNextStepSelect}
+              />
+            )}
           </div>
 
-          {/* Action Buttons (Assistant only) */}
           {message.role === "assistant" && (
-            <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                type="button"
-                onClick={copyToClipboard}
-                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-600 dark:text-gray-400 flex items-center gap-1 text-xs"
-                title="Copy response"
-              >
-                {copied ? <FiCheck className="w-3.5 h-3.5" /> : <FiCopy className="w-3.5 h-3.5" />}
-                <span>{copied ? "Copied" : "Copy"}</span>
-              </button>
-
-              {isLast && onRegenerate && (
-                <button
-                  type="button"
-                  onClick={onRegenerate}
-                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded text-gray-600 dark:text-gray-400 flex items-center gap-1 text-xs"
-                  title="Regenerate response"
-                >
-                  <FiRefreshCw className="w-3.5 h-3.5" />
-                  <span>Regenerate</span>
-                </button>
-              )}
-            </div>
+            <MessageActions
+              messageId={messageId}
+              content={message.content}
+              rawContent={message.rawContent}
+              meta={message.meta}
+              isLast={isLast}
+              onCopy={() => onCopy?.(messageId)}
+              onLike={(liked) => onLike?.(messageId, liked)}
+              onRegenerate={isLast ? onRegenerate : undefined}
+              onCopyMarkdown={() => {
+                navigator.clipboard.writeText(message.content)
+                onToast?.("Copied as Markdown")
+              }}
+              onReport={() => {}}
+              onShowRaw={handleShowRaw}
+              onPin={onPin ? () => onPin(messageId) : undefined}
+              onDelete={onDelete ? () => onDelete(messageId) : undefined}
+              onToast={onToast ?? (() => {})}
+            />
           )}
         </div>
       </div>

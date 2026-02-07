@@ -32,6 +32,10 @@ import MessageBubble from "./MessageBubble"
 import type { MessageBubbleMessage } from "./MessageBubble"
 import type { SessionItem } from "./Sidebar"
 import ChatInput from "./ChatInput"
+import Toast from "./Toast"
+import { getThinkingDelayMs } from "@/lib/thinking-delay"
+
+const LIKES_STORAGE_KEY = "erek_message_likes"
 
 type SuggestionType = "history" | "interesting" | "learn" | "story" | "idea"
 
@@ -54,6 +58,25 @@ function SuggestionIcon({ type, text, className = "w-4 h-4 shrink-0 opacity-80" 
   return <Icon className={className} />
 }
 
+function getStoredLikes(): Record<string, boolean> {
+  if (typeof window === "undefined") return {}
+  try {
+    const raw = localStorage.getItem(LIKES_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : {}
+  } catch {
+    return {}
+  }
+}
+
+function setStoredLike(messageId: string, liked: boolean | null) {
+  const next = { ...getStoredLikes() }
+  if (liked == null) delete next[messageId]
+  else next[messageId] = liked
+  try {
+    localStorage.setItem(LIKES_STORAGE_KEY, JSON.stringify(next))
+  } catch {}
+}
+
 export default function ChatUI() {
   const [messages, setMessages] = useState<MessageBubbleMessage[]>([])
   const [input, setInput] = useState("")
@@ -61,9 +84,27 @@ export default function ChatUI() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sessions, setSessions] = useState<SessionItem[]>([])
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [toastVisible, setToastVisible] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const pendingReplyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const currentAssistantIdRef = useRef<string | null>(null)
   const searchParams = useSearchParams()
+
+  const showToast = useCallback((message: string) => {
+    setToastMessage(message)
+    setToastVisible(true)
+  }, [])
+
+  useEffect(() => {
+    if (!toastVisible) return
+    const t = setTimeout(() => {
+      setToastVisible(false)
+      setToastMessage(null)
+    }, 2500)
+    return () => clearTimeout(t)
+  }, [toastVisible, toastMessage])
 
   /** Suggestions: user's recent chat titles first, then fill with fun defaults; each with type for icon */
   const suggestionPrompts = useMemo(() => {
@@ -99,18 +140,26 @@ export default function ChatUI() {
   const loadSession = useCallback((id: string) => {
     setSessionId(id)
     localStorage.setItem("erek_session", id)
+    const likes = getStoredLikes()
     fetch(`/api/sessions/${id}/messages`)
       .then((r) => r.json())
-      .then((d) =>
-        d.messages
-          ? setMessages(
-              d.messages.map((m: { role: string; content: string }) => ({
-                role: m.role,
-                content: m.content,
-              }))
-            )
-          : setMessages([])
-      )
+      .then((d) => {
+        if (!d.messages) {
+          setMessages([])
+          return
+        }
+        setMessages(
+          (d.messages as { role: string; content: string }[]).map((m, i) => {
+            const msgId = `s-${id}-${i}`
+            return {
+              role: m.role,
+              content: m.content,
+              id: msgId,
+              meta: { liked: likes[msgId] ?? null },
+            }
+          })
+        )
+      })
       .catch(() => setMessages([]))
   }, [])
 
@@ -139,18 +188,55 @@ export default function ChatUI() {
       if (!text || isStreaming) return
 
       if (!isRegenerate) setInput("")
+      const userMsg: MessageBubbleMessage = {
+        role: "user",
+        content: text,
+        id: crypto.randomUUID(),
+      }
       const next: MessageBubbleMessage[] = isRegenerate
-        ? [...messages.slice(0, -2), { role: "user", content: text }]
-        : [...messages, { role: "user", content: text }]
+        ? [...messages.slice(0, -2), userMsg]
+        : [...messages, userMsg]
       setMessages(next)
       setIsStreaming(true)
       scrollToBottom()
 
-      const assistantMessage: MessageBubbleMessage = { role: "assistant", content: "" }
+      const assistantMessage: MessageBubbleMessage = {
+        role: "assistant",
+        content: "",
+        id: crypto.randomUUID(),
+      }
+      const thinkingStart = Date.now()
+      const thinkingDelayMs = getThinkingDelayMs(text)
+      currentAssistantIdRef.current = assistantMessage.id ?? null
       setMessages((prev) => [...prev, assistantMessage])
 
       abortRef.current = new AbortController()
       const signal = abortRef.current.signal
+
+      const applyReply = (
+        replyText: string,
+        newSessionId: string | null,
+        nextSteps?: string[]
+      ) => {
+        setMessages((prev) => {
+          const last = prev[prev.length - 1]
+          if (last?.id !== currentAssistantIdRef.current || last?.role !== "assistant") return prev
+          const newMessages = [...prev]
+          newMessages[newMessages.length - 1] = {
+            ...last,
+            content: replyText,
+            nextSteps,
+            meta: { ...last.meta, liked: last.meta?.liked ?? null },
+          }
+          return newMessages
+        })
+        if (newSessionId != null) {
+          setSessionId(newSessionId)
+          localStorage.setItem("erek_session", newSessionId)
+          loadSessions()
+        }
+        scrollToBottom()
+      }
 
       try {
         const response = await fetch("/api/chat", {
@@ -162,24 +248,34 @@ export default function ChatUI() {
 
         const data = await response.json().catch(() => ({}))
         if (!response.ok) {
-          throw new Error(data?.error || data?.userMessage || data?.detail || `Request failed (${response.status})`)
+          const errCode = data?.error || data?.userMessage || `Request failed (${response.status})`
+          const detail = data?.detail ? ` — ${String(data.detail).slice(0, 200)}` : ""
+          const status = data?.status != null ? ` [${data.status}]` : ""
+          throw new Error(`${errCode}${status}${detail}`)
         }
 
         const reply = String(data?.text ?? data?.reply ?? "").trim()
-        setMessages((prev) => {
-          const newMessages = [...prev]
-          const last = newMessages[newMessages.length - 1]
-          if (last?.role === "assistant")
-            newMessages[newMessages.length - 1] = { ...last, content: reply }
-          return newMessages
-        })
-        if (data?.sessionId != null) {
-          setSessionId(data.sessionId)
-          localStorage.setItem("erek_session", data.sessionId)
-          loadSessions()
+        const elapsed = Date.now() - thinkingStart
+        const wait = Math.max(0, thinkingDelayMs - elapsed)
+
+        const nextSteps = Array.isArray(data?.nextSteps) ? data.nextSteps : undefined
+        if (wait > 0) {
+          pendingReplyTimeoutRef.current = setTimeout(() => {
+            pendingReplyTimeoutRef.current = null
+            applyReply(reply, data?.sessionId ?? null, nextSteps)
+            setIsStreaming(false)
+            abortRef.current = null
+          }, wait)
+        } else {
+          applyReply(reply, data?.sessionId ?? null, nextSteps)
+          setIsStreaming(false)
+          abortRef.current = null
         }
-        scrollToBottom()
       } catch (err: unknown) {
+        if (pendingReplyTimeoutRef.current) {
+          clearTimeout(pendingReplyTimeoutRef.current)
+          pendingReplyTimeoutRef.current = null
+        }
         if (err instanceof Error && err.name === "AbortError") {
           setMessages((prev) => {
             const newMessages = [...prev]
@@ -188,6 +284,7 @@ export default function ChatUI() {
               return newMessages.slice(0, -1)
             return newMessages
           })
+          currentAssistantIdRef.current = null
           return
         }
         const msg = err instanceof Error ? err.message : "Unknown error"
@@ -202,8 +299,10 @@ export default function ChatUI() {
         })
         scrollToBottom()
       } finally {
-        setIsStreaming(false)
-        abortRef.current = null
+        if (!pendingReplyTimeoutRef.current) {
+          setIsStreaming(false)
+          abortRef.current = null
+        }
       }
     },
     [messages, input, isStreaming, sessionId, loadSessions]
@@ -215,6 +314,31 @@ export default function ChatUI() {
     const content = typeof lastUser.content === "string" ? lastUser.content : String(lastUser.content ?? "")
     sendMessage(content, true)
   }, [messages, isStreaming, sendMessage])
+
+  const handleLike = useCallback((messageId: string, liked: boolean | null) => {
+    setStoredLike(messageId, liked)
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, meta: { ...m.meta, liked } } : m))
+    )
+  }, [])
+
+  const handleNextStepSelect = useCallback((text: string) => {
+    setInput(text)
+  }, [])
+
+  const handleDeleteMessage = useCallback((messageId: string) => {
+    setMessages((prev) => prev.filter((m) => m.id !== messageId))
+  }, [])
+
+  const handlePin = useCallback((messageId: string) => {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? { ...m, meta: { ...m.meta, pinned: !m.meta?.pinned } }
+          : m
+      )
+    )
+  }, [])
 
   const handleNewChat = useCallback(() => {
     setMessages([])
@@ -231,13 +355,26 @@ export default function ChatUI() {
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-[#0c0c0c]">
-      {/* Sidebar column: icon at top, content below; no extra bar */}
+      {/* When closed: only a floating toggle icon on the left edge */}
+      {!sidebarOpen && (
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="fixed left-3 top-4 z-20 flex items-center justify-center w-7 h-7 rounded-lg bg-[#121212] text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+          aria-label="Open sidebar"
+          title="Open sidebar"
+        >
+          <SidebarPanelIcon open={false} className="w-4 h-4" />
+        </button>
+      )}
+
+      {/* Sidebar column: full width when open, 0 when closed */}
       <div
         className={`shrink-0 flex flex-col h-full overflow-hidden transition-[width] duration-300 ease-in-out bg-[#121212] ${
-          sidebarOpen ? "w-64" : "w-12"
+          sidebarOpen ? "w-64" : "w-0"
         }`}
       >
-        {/* Top row: EreK left, open/close slider right (sidebar ke right end pe) */}
+        {/* Top row: EreK left, open/close slider right */}
         <div
           className={`shrink-0 h-12 flex items-center border-b border-white/10 px-3 ${
             sidebarOpen ? "justify-between" : "justify-center"
@@ -254,15 +391,17 @@ export default function ChatUI() {
               EreK
             </button>
           )}
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            className="flex items-center justify-center w-9 h-9 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors shrink-0"
-            aria-label={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-            title={sidebarOpen ? "Close sidebar" : "Open sidebar"}
-          >
-            <SidebarPanelIcon open={sidebarOpen} className="w-5 h-5" />
-          </button>
+          {sidebarOpen && (
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+              aria-label="Close sidebar"
+              title="Close sidebar"
+            >
+              <SidebarPanelIcon open={true} className="w-4 h-4" />
+            </button>
+          )}
         </div>
         {/* Sidebar content – visible when open */}
         <div className="flex-1 min-w-0 overflow-hidden">
@@ -288,7 +427,15 @@ export default function ChatUI() {
       </div>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex-1 overflow-y-auto">
+        <div
+          className="flex-1 overflow-y-auto"
+          onClick={(e) => {
+            if (!sidebarOpen) return
+            const t = e.target as HTMLElement
+            if (t.closest("button") || t.closest("input") || t.closest("textarea") || t.closest("a")) return
+            toggleSidebar()
+          }}
+        >
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center px-4">
               <div className="mb-4">
@@ -316,23 +463,37 @@ export default function ChatUI() {
             <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
               {messages.map((msg, idx) => (
                 <MessageBubble
-                  key={idx}
+                  key={msg.id ?? idx}
                   message={msg}
+                  messageIndex={idx}
                   isLast={idx === messages.length - 1}
                   onRegenerate={
                     idx === messages.length - 1 && msg.role === "assistant" && !isStreaming && messages.length >= 2
                       ? regenerateResponse
                       : undefined
                   }
+                  onNextStepSelect={handleNextStepSelect}
+                  onCopy={() => {}}
+                  onLike={handleLike}
+                  onToast={showToast}
+                  onPin={handlePin}
+                  onDelete={handleDeleteMessage}
                 />
               ))}
               {isStreaming && (
                 <div className="flex gap-3">
                   <div className="w-8 h-8 flex-shrink-0 mt-1" aria-hidden />
-                  <div className="flex items-center gap-1.5 rounded-none bg-white dark:bg-[#2A2A2A] px-4 py-3 shadow-none [font-family:var(--font-inter),var(--font-roboto),system-ui,sans-serif]">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-gray-400" />
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-gray-400 [animation-delay:150ms]" />
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-gray-400 [animation-delay:300ms]" />
+                  <div
+                    className="flex items-center gap-2 rounded-none bg-white dark:bg-[#2A2A2A] px-4 py-3 shadow-none [font-family:var(--font-inter),var(--font-roboto),system-ui,sans-serif]"
+                    aria-live="polite"
+                    aria-label="Erek is thinking"
+                  >
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Erek is thinking</span>
+                    <span className="flex items-center gap-1">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-gray-400" />
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-gray-400 [animation-delay:150ms]" />
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-gray-400 [animation-delay:300ms]" />
+                    </span>
                   </div>
                 </div>
               )}
@@ -348,6 +509,8 @@ export default function ChatUI() {
           isStreaming={isStreaming}
           onStop={handleStop}
         />
+
+        <Toast message={toastMessage} visible={toastVisible} />
       </div>
     </div>
   )

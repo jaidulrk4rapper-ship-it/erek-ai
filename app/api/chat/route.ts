@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server"
+import { formatErekResponse } from "@/lib/response-formatter"
+import { parseNextStepsFromMessage } from "@/lib/next-steps"
+import { SYSTEM_PROMPT } from "@/lib/system-prompt"
 
 export const runtime = "nodejs"
 
@@ -20,6 +23,8 @@ export async function POST(req: Request) {
     const baseUrl = (raw ?? "http://127.0.0.1:11434").replace(/\/$/, "")
     const url = `${baseUrl}/api/generate`
 
+    const prompt = `${SYSTEM_PROMPT}\n\nUser: ${message}\n\nAssistant:`
+
     const ac = new AbortController()
     const t = setTimeout(() => ac.abort(), 60_000)
 
@@ -28,7 +33,7 @@ export async function POST(req: Request) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: process.env.OLLAMA_MODEL,
-        prompt: message,
+        prompt,
         stream: false,
       }),
       signal: ac.signal,
@@ -43,7 +48,12 @@ export async function POST(req: Request) {
     }
 
     const data = await r.json()
-    return NextResponse.json({ text: data?.response ?? "" })
+    const rawText = data?.response ?? ""
+    const parsedNextSteps = parseNextStepsFromMessage(rawText)
+    const text = formatErekResponse(rawText, { userMessage: message })
+    const nextSteps =
+      parsedNextSteps.length >= 2 ? parsedNextSteps.slice(0, 4) : undefined
+    return NextResponse.json({ text, nextSteps })
   } catch (e: unknown) {
     const msg =
       e instanceof Error && e.name === "AbortError"

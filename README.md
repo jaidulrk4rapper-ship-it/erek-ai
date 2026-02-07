@@ -58,6 +58,15 @@ EreK is a small Next.js app for **local Ollama chat**. It talks to Ollama (and o
 
 ---
 
+## Deploy to Vercel
+
+1. **Login** (one-time): `npx vercel login`
+2. **Deploy**: from project root run `npx vercel --prod`
+
+Set env in Vercel → Project → Settings → Environment Variables: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, `ADMIN_SECRET`, `OLLAMA_URL`, `OLLAMA_MODEL`. Full steps and Turso setup: [docs/DEPLOY_VERCEL.md](docs/DEPLOY_VERCEL.md).
+
+---
+
 ## Env vars
 
 | Variable | Required | Description |
