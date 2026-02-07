@@ -165,7 +165,7 @@ export default function ChatUI() {
           throw new Error(data?.error || data?.userMessage || data?.detail || `Request failed (${response.status})`)
         }
 
-        const reply = String(data?.reply ?? "").trim()
+        const reply = String(data?.text ?? data?.reply ?? "").trim()
         setMessages((prev) => {
           const newMessages = [...prev]
           const last = newMessages[newMessages.length - 1]
@@ -173,7 +173,7 @@ export default function ChatUI() {
             newMessages[newMessages.length - 1] = { ...last, content: reply }
           return newMessages
         })
-        if (data?.sessionId) {
+        if (data?.sessionId != null) {
           setSessionId(data.sessionId)
           localStorage.setItem("erek_session", data.sessionId)
           loadSessions()

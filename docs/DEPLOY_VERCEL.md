@@ -98,7 +98,8 @@ N8N_TIMEOUT_MS=8000
 
 7. **Ollama**  
    Ensure `OLLAMA_URL` is reachable from Vercel (e.g. public URL or tunnel). If not, chat will fail until Ollama or an alternative (e.g. n8n) is configured.  
-   **ENV sanity:** `OLLAMA_URL` = base URL (no path). We call `/api/generate`. Example: `OLLAMA_URL=https://location-agricultural-causes-sunset.trycloudflare.com`, `OLLAMA_MODEL=llama3`.
+   **ENV sanity:** `OLLAMA_URL` = base URL (no path). We call `/api/generate`. Example: `OLLAMA_URL=https://location-agricultural-causes-sunset.trycloudflare.com`, `OLLAMA_MODEL=llama3`.  
+   **Vercel pe localhost/127.0.0.1 kaam nahi karega** — serverless se tumhara local Ollama reachable nahi hota. OLLAMA_URL ko publicly reachable URL set karo (e.g. Cloudflare tunnel), phir redeploy.
 
 ---
 
