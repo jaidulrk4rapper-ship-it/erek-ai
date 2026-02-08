@@ -33,8 +33,21 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   created_at INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  name TEXT,
+  password_hash TEXT,
+  salt TEXT,
+  provider TEXT DEFAULT 'credentials',
+  created_at INTEGER
+);
+
 CREATE INDEX IF NOT EXISTS idx_session_time
 ON chat_messages(session_id, created_at);
+
+CREATE INDEX IF NOT EXISTS idx_users_email
+ON users(email);
 `)
   try {
     db.exec(`ALTER TABLE chat_sessions ADD COLUMN title TEXT`)

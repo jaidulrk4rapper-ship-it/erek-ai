@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono, Inter, Roboto } from "next/font/google"
 import "./globals.css"
+import AuthProvider from "@/components/AuthProvider"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,14 +26,16 @@ const roboto = Roboto({
 
 export const metadata: Metadata = {
   title: "EreK",
-  description: "Local chat (Ollama + optional n8n).",
+  description: "Your AI assistant — powered by EreK.",
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} ${roboto.variable} antialiased`}>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   )

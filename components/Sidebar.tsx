@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { FiMessageSquare, FiMoreVertical, FiShare2, FiEdit2, FiMapPin, FiTrash2, FiSearch } from "react-icons/fi"
+import UserMenu from "./UserMenu"
 
 function NotebookPenIcon({ className }: { className?: string }) {
   return (
@@ -301,6 +302,10 @@ export default function Sidebar({
         {shareFeedback && (
           <p className="px-3 py-2 text-xs text-green-400 animate-pulse">{shareFeedback}</p>
         )}
+      </div>
+
+      <div className="shrink-0 border-t border-white/10 p-2">
+        <UserMenu />
       </div>
 
       {/* Dropdown in portal so it is not clipped by sidebar overflow */}

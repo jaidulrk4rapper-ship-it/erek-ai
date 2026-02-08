@@ -28,7 +28,18 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   created_at INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  name TEXT,
+  password_hash TEXT,
+  salt TEXT,
+  provider TEXT DEFAULT 'credentials',
+  created_at INTEGER
+);
+
 CREATE INDEX IF NOT EXISTS idx_session_time ON chat_messages(session_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 `
 
 export async function ensureTursoSchema() {
@@ -36,7 +47,7 @@ export async function ensureTursoSchema() {
   const c = getTursoClient()
   const statements = SCHEMA.split(";").map((s) => s.trim()).filter(Boolean)
   for (const sql of statements) {
-    if (sql) await c.execute(sql)
+    if (sql) await c.execute({ sql })
   }
   schemaDone = true
 }
@@ -52,15 +63,15 @@ export async function getTursoDb(): Promise<DbRunner> {
   const c = getTursoClient()
   return {
     async run(sql: string, ...args: (string | number | null)[]) {
-      await c.execute({ sql, args: args as any })
+      await c.execute({ sql, args: args as unknown[] })
     },
     async get<T>(sql: string, ...args: (string | number | null)[]): Promise<T | undefined> {
-      const rs = await c.execute({ sql, args: args as any })
+      const rs = await c.execute({ sql, args: args as unknown[] })
       const row = rs.rows[0]
       return row as T | undefined
     },
     async all<T>(sql: string, ...args: (string | number | null)[]): Promise<T[]> {
-      const rs = await c.execute({ sql, args: args as any })
+      const rs = await c.execute({ sql, args: args as unknown[] })
       return rs.rows as T[]
     },
   }
