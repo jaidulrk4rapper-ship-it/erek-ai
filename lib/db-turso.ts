@@ -58,20 +58,25 @@ export type DbRunner = {
   all<T>(sql: string, ...args: (string | number | null)[]): Promise<T[]>
 }
 
+type InArgs = Array<string | number | null>
+
 export async function getTursoDb(): Promise<DbRunner> {
   await ensureTursoSchema()
   const c = getTursoClient()
   return {
     async run(sql: string, ...args: (string | number | null)[]) {
-      await c.execute({ sql, args: args as unknown[] })
+      const a: InArgs | undefined = args.length ? args : undefined
+      await c.execute(sql, a)
     },
     async get<T>(sql: string, ...args: (string | number | null)[]): Promise<T | undefined> {
-      const rs = await c.execute({ sql, args: args as unknown[] })
+      const a: InArgs | undefined = args.length ? args : undefined
+      const rs = await c.execute(sql, a)
       const row = rs.rows[0]
       return row as T | undefined
     },
     async all<T>(sql: string, ...args: (string | number | null)[]): Promise<T[]> {
-      const rs = await c.execute({ sql, args: args as unknown[] })
+      const a: InArgs | undefined = args.length ? args : undefined
+      const rs = await c.execute(sql, a)
       return rs.rows as T[]
     },
   }
