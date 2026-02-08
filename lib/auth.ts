@@ -1,15 +1,21 @@
-import NextAuth from "next-auth"
+import NextAuth, { type Account, type AuthOptions, type DefaultSession } from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
 import GitHubProvider from "next-auth/providers/github"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { getDb } from "./db"
 import crypto from "crypto"
 
+declare module "next-auth" {
+  interface Session {
+    user?: DefaultSession["user"] & { id?: string }
+  }
+}
+
 function hashPassword(password: string, salt: string): string {
   return crypto.pbkdf2Sync(password, salt, 100000, 64, "sha512").toString("hex")
 }
 
-export const authOptions = {
+export const authOptions: AuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -50,7 +56,7 @@ export const authOptions = {
     signIn: "/auth/login",
   },
   callbacks: {
-    async signIn({ user, account }: { user: { email?: string | null; name?: string | null }; account?: { provider?: string } }) {
+    async signIn({ user, account }: { user: { email?: string | null; name?: string | null }; account: Account | null }) {
       if (account?.provider === "google" || account?.provider === "github") {
         const db = await getDb()
         const existing = await db.get<{ id: string }>(
@@ -63,14 +69,14 @@ export const authOptions = {
             crypto.randomUUID(),
             user.email!.toLowerCase().trim(),
             user.name || "User",
-            account!.provider,
+            account.provider,
             Date.now()
           )
         }
       }
       return true
     },
-    async session({ session, token }: { session: { user?: { id?: string } }; token?: { sub?: string; email?: string } }) {
+    async session({ session, token }) {
       if (session?.user && token?.sub) {
         session.user.id = token.sub
       }
@@ -78,13 +84,13 @@ export const authOptions = {
         const db = await getDb()
         const dbUser = await db.get<{ id: string }>(
           "SELECT id FROM users WHERE email = ?",
-          token.email!.toLowerCase().trim()
+          String(token.email).toLowerCase().trim()
         )
-        if (dbUser) session.user!.id = dbUser.id
+        if (dbUser) session.user.id = dbUser.id
       }
       return session
     },
-    async jwt({ token, user }: { token: { sub?: string }; user?: { id?: string } }) {
+    async jwt({ token, user }) {
       if (user) {
         token.sub = user.id
       }
