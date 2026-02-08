@@ -3,31 +3,21 @@ import { SYSTEM_PROMPT } from "@/lib/system-prompt"
 
 export const runtime = "nodejs"
 
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-
 function withTimeout<T>(p: Promise<T>, ms: number) {
   return new Promise<T>((resolve, reject) => {
     const t = setTimeout(() => reject(new Error(`timeout_after_${ms}ms`)), ms)
-    p.then((v) => {
-      clearTimeout(t)
-      resolve(v)
-    }).catch((e) => {
-      clearTimeout(t)
-      reject(e)
-    })
+    p.then((v) => { clearTimeout(t); resolve(v) })
+     .catch((e) => { clearTimeout(t); reject(e) })
   })
 }
 
 export async function POST(req: Request) {
   const apiKey = process.env.GROQ_API_KEY
-  const model = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile"
-  const timeoutMs = Number(process.env.GROQ_TIMEOUT_MS || 20000)
+  const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile"
+  const timeoutMs = Number(process.env.GROQ_TIMEOUT_MS || 30000)
 
   if (!apiKey) {
-    return NextResponse.json(
-      { error: "GROQ_API_KEY not set. Add it to .env.local" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "GROQ_API_KEY missing" }, { status: 500 })
   }
 
   const body = await req.json().catch(() => ({}))
@@ -37,24 +27,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "message is required" }, { status: 400 })
   }
 
-  const messages = [
-    { role: "system" as const, content: SYSTEM_PROMPT },
-    { role: "user" as const, content: message },
-  ]
-
   try {
     const res = await withTimeout(
-      fetch(GROQ_URL, {
+      fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
+          "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           model,
-          messages,
-          stream: false,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: message },
+          ],
           temperature: 0.7,
+          max_tokens: 2048,
         }),
       }),
       timeoutMs
@@ -62,27 +50,18 @@ export async function POST(req: Request) {
 
     if (!res.ok) {
       const txt = await res.text().catch(() => "")
-      return NextResponse.json(
-        { error: `groq_http_${res.status}`, detail: txt },
-        { status: 502 }
-      )
+      return NextResponse.json({ error: `groq_http_${res.status}`, detail: txt }, { status: 502 })
     }
 
-    const data = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>
-    }
-    const content = data?.choices?.[0]?.message?.content ?? ""
+    const data = await res.json()
 
     return NextResponse.json({
       role: "assistant",
-      content,
+      content: data?.choices?.[0]?.message?.content ?? "",
     })
   } catch (e: unknown) {
     return NextResponse.json(
-      {
-        error: "groq_failed",
-        detail: e instanceof Error ? e.message : "Request error",
-      },
+      { error: "groq_failed", detail: e instanceof Error ? e.message : "API error" },
       { status: 502 }
     )
   }

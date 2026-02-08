@@ -18,8 +18,8 @@ export function normalizeToEreKError(e: unknown): EreKError {
 
   if (code === "ECONNREFUSED" || msg.includes("ECONNREFUSED")) {
     return new EreKError(
-      "service_unavailable",
-      "Service is not reachable. Please try again.",
+      "groq_unavailable",
+      "Groq API is not reachable. Please check your internet connection.",
       true,
       msg
     )
@@ -27,32 +27,27 @@ export function normalizeToEreKError(e: unknown): EreKError {
   if (code === "ETIMEDOUT" || code === "ABORT_ERR" || msg.includes("timeout") || msg.includes("abort")) {
     return new EreKError(
       "timeout",
-      "Request timed out. Please try again.",
+      "Request timed out. Groq API may be slow or unreachable.",
       true,
       msg
     )
   }
-  if (msg.includes("GROQ_API_KEY") || msg.includes("GROQ_MODEL")) {
+  if (msg.includes("GROQ_API_KEY")) {
     return new EreKError(
       "config_missing",
-      "Groq is not configured. Set GROQ_API_KEY (and optionally GROQ_MODEL) in .env.local and restart.",
+      "Groq is not configured. Set GROQ_API_KEY in your environment variables and redeploy.",
       false,
       msg
     )
   }
-  if (msg.includes("groq_http_") || msg.includes("Groq error")) {
+  if (msg.includes("groq_http_")) {
     return new EreKError(
       "groq_http_error",
-      "Groq API is not responding. Check your API key and rate limits.",
+      "Groq API returned an error. Please try again.",
       true,
       msg
     )
   }
 
-  return new EreKError(
-    "unknown",
-    "Could not get a reply. Check that GROQ_API_KEY is set in .env.local.",
-    false,
-    msg
-  )
+  return new EreKError("unknown", "Could not get a reply. Check that GROQ_API_KEY is set correctly.", false, msg)
 }
