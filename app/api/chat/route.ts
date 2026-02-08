@@ -5,6 +5,8 @@ import { SYSTEM_PROMPT } from "@/lib/system-prompt"
 
 export const runtime = "nodejs"
 
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}))
@@ -13,28 +15,40 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "message is required" }, { status: 400 })
     }
 
-    const raw = process.env.OLLAMA_URL
-    if (!raw && process.env.NODE_ENV === "production") {
+    const apiKey = process.env.GROQ_API_KEY
+    if (!apiKey && process.env.NODE_ENV === "production") {
       return NextResponse.json(
-        { error: "OLLAMA_URL_not_configured" },
+        { error: "GROQ_API_KEY_not_configured" },
         { status: 500 }
       )
     }
-    const baseUrl = (raw ?? "http://127.0.0.1:11434").replace(/\/$/, "")
-    const url = `${baseUrl}/api/generate`
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "GROQ_API_KEY not set. Add it to .env.local" },
+        { status: 500 }
+      )
+    }
 
-    const prompt = `${SYSTEM_PROMPT}\n\nUser: ${message}\n\nAssistant:`
+    const model = process.env.GROQ_MODEL ?? "llama-3.3-70b-versatile"
+    const messages = [
+      { role: "system" as const, content: SYSTEM_PROMPT },
+      { role: "user" as const, content: message },
+    ]
 
     const ac = new AbortController()
     const t = setTimeout(() => ac.abort(), 60_000)
 
-    const r = await fetch(url, {
+    const r = await fetch(GROQ_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
       body: JSON.stringify({
-        model: process.env.OLLAMA_MODEL,
-        prompt,
+        model,
+        messages,
         stream: false,
+        temperature: 0.7,
       }),
       signal: ac.signal,
     }).finally(() => clearTimeout(t))
@@ -42,13 +56,15 @@ export async function POST(req: Request) {
     if (!r.ok) {
       const text = await r.text().catch(() => "")
       return NextResponse.json(
-        { error: "ollama_http_error", status: r.status, detail: text.slice(0, 500) },
+        { error: "groq_http_error", status: r.status, detail: text.slice(0, 500) },
         { status: 502 }
       )
     }
 
-    const data = await r.json()
-    const rawText = data?.response ?? ""
+    const data = (await r.json()) as {
+      choices?: Array<{ message?: { content?: string } }>
+    }
+    const rawText = data?.choices?.[0]?.message?.content ?? ""
     const parsedNextSteps = parseNextStepsFromMessage(rawText)
     const text = formatErekResponse(rawText, { userMessage: message })
     const nextSteps =
@@ -57,10 +73,10 @@ export async function POST(req: Request) {
   } catch (e: unknown) {
     const msg =
       e instanceof Error && e.name === "AbortError"
-        ? "ollama_timeout"
+        ? "groq_timeout"
         : e instanceof Error
           ? String(e.message)
-          : "ollama_fetch_failed"
+          : "groq_fetch_failed"
     return NextResponse.json({ error: msg }, { status: 502 })
   }
 }

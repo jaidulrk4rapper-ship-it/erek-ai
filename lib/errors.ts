@@ -18,8 +18,8 @@ export function normalizeToEreKError(e: unknown): EreKError {
 
   if (code === "ECONNREFUSED" || msg.includes("ECONNREFUSED")) {
     return new EreKError(
-      "ollama_unavailable",
-      "Ollama is not running. Please start Ollama and try again.",
+      "service_unavailable",
+      "Service is not reachable. Please try again.",
       true,
       msg
     )
@@ -27,27 +27,32 @@ export function normalizeToEreKError(e: unknown): EreKError {
   if (code === "ETIMEDOUT" || code === "ABORT_ERR" || msg.includes("timeout") || msg.includes("abort")) {
     return new EreKError(
       "timeout",
-      "Request timed out. Ollama or n8n may be slow or unreachable.",
+      "Request timed out. Please try again.",
       true,
       msg
     )
   }
-  if (msg.includes("OLLAMA_URL") || msg.includes("OLLAMA_MODEL")) {
+  if (msg.includes("GROQ_API_KEY") || msg.includes("GROQ_MODEL")) {
     return new EreKError(
       "config_missing",
-      "Ollama is not configured. Set OLLAMA_URL and OLLAMA_MODEL in .env.local and restart.",
+      "Groq is not configured. Set GROQ_API_KEY (and optionally GROQ_MODEL) in .env.local and restart.",
       false,
       msg
     )
   }
-  if (msg.includes("ollama_http_")) {
+  if (msg.includes("groq_http_") || msg.includes("Groq error")) {
     return new EreKError(
-      "ollama_http_error",
-      "Ollama is not responding. Is it running? (e.g. ollama run llama3.1)",
+      "groq_http_error",
+      "Groq API is not responding. Check your API key and rate limits.",
       true,
       msg
     )
   }
 
-  return new EreKError("unknown", "Could not get a reply. Check that Ollama is running and .env.local is set.", false, msg)
+  return new EreKError(
+    "unknown",
+    "Could not get a reply. Check that GROQ_API_KEY is set in .env.local.",
+    false,
+    msg
+  )
 }
