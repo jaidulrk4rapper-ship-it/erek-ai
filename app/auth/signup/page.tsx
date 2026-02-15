@@ -15,7 +15,20 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [oauthLoading, setOauthLoading] = useState<"google" | "github" | null>(null)
   const router = useRouter()
+
+  const callbackUrl = typeof window !== "undefined" ? `${window.location.origin}/chat` : "/chat"
+
+  const handleGoogleSignIn = () => {
+    setOauthLoading("google")
+    signIn("google", { callbackUrl })
+  }
+
+  const handleGitHubSignIn = () => {
+    setOauthLoading("github")
+    signIn("github", { callbackUrl })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -80,19 +93,21 @@ export default function SignupPage() {
           <div className="space-y-3 mb-6">
             <button
               type="button"
-              onClick={() => signIn("google", { callbackUrl: "/chat" })}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-[#1e1e1e] hover:bg-white/10 text-white text-sm font-medium transition-colors"
+              onClick={handleGoogleSignIn}
+              disabled={!!oauthLoading}
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-[#1e1e1e] hover:bg-white/10 disabled:opacity-70 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
             >
-              <FcGoogle className="w-5 h-5" />
-              Continue with Google
+              <FcGoogle className="w-5 h-5 shrink-0" />
+              {oauthLoading === "google" ? "Redirecting to Google…" : "Continue with Google"}
             </button>
             <button
               type="button"
-              onClick={() => signIn("github", { callbackUrl: "/chat" })}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-[#1e1e1e] hover:bg-white/10 text-white text-sm font-medium transition-colors"
+              onClick={handleGitHubSignIn}
+              disabled={!!oauthLoading}
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-white/10 bg-[#1e1e1e] hover:bg-white/10 disabled:opacity-70 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors"
             >
-              <FaGithub className="w-5 h-5" />
-              Continue with GitHub
+              <FaGithub className="w-5 h-5 shrink-0" />
+              {oauthLoading === "github" ? "Redirecting to GitHub…" : "Continue with GitHub"}
             </button>
           </div>
 
