@@ -1,0 +1,497 @@
+{
+  "project": "erek_ai_v0",
+  "generated": "2026-02-15",
+  "summary": {
+    "total": 56,
+    "completed": 47,
+    "pending": 9,
+    "completion_rate": "84%"
+  },
+  "categories": [
+    {
+      "name": "Core Features & Infrastructure",
+      "tasks": [
+        {
+          "id": "core-001",
+          "name": "Next.js app with chat interface",
+          "status": true,
+          "priority": "high",
+          "related_files": ["app/chat/page.tsx", "components/ChatUI.tsx"]
+        },
+        {
+          "id": "core-002",
+          "name": "Ollama integration (local LLM)",
+          "status": true,
+          "priority": "high",
+          "related_files": ["app/api/ollama/route.ts", "lib/llm.ts"]
+        },
+        {
+          "id": "core-003",
+          "name": "Real-time streaming responses",
+          "status": true,
+          "priority": "high",
+          "related_files": ["app/api/chat/stream/route.ts"]
+        },
+        {
+          "id": "core-004",
+          "name": "SQLite database for conversations",
+          "status": true,
+          "priority": "high",
+          "related_files": ["lib/db.ts"]
+        },
+        {
+          "id": "core-005",
+          "name": "Session management",
+          "status": true,
+          "priority": "high",
+          "related_files": ["lib/chat-store.ts"]
+        },
+        {
+          "id": "core-006",
+          "name": "Message history persistence",
+          "status": true,
+          "priority": "high",
+          "related_files": ["lib/chat-store.ts"]
+        },
+        {
+          "id": "core-007",
+          "name": "Sidebar with past conversations",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["components/Sidebar.tsx"]
+        },
+        {
+          "id": "core-008",
+          "name": "Markdown & code syntax highlighting",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["components/MarkdownMessage.tsx"]
+        }
+      ]
+    },
+    {
+      "name": "Authentication & Security",
+      "tasks": [
+        {
+          "id": "auth-001",
+          "name": "NextAuth integration",
+          "status": true,
+          "priority": "high",
+          "related_files": ["app/api/auth/[...nextauth]/route.ts", "lib/auth.ts"]
+        },
+        {
+          "id": "auth-002",
+          "name": "Login page",
+          "status": true,
+          "priority": "high",
+          "related_files": ["app/auth/login/page.tsx"]
+        },
+        {
+          "id": "auth-003",
+          "name": "Signup page",
+          "status": true,
+          "priority": "high",
+          "related_files": ["app/auth/signup/page.tsx"]
+        },
+        {
+          "id": "auth-004",
+          "name": "Admin authentication",
+          "status": true,
+          "priority": "high",
+          "related_files": ["lib/admin-auth.ts"]
+        },
+        {
+          "id": "auth-005",
+          "name": "Admin secret token validation",
+          "status": true,
+          "priority": "high",
+          "related_files": ["lib/admin-auth.ts"]
+        },
+        {
+          "id": "auth-006",
+          "name": "Session-based auth",
+          "status": true,
+          "priority": "high",
+          "related_files": ["lib/auth.ts", "components/AuthProvider.tsx"]
+        }
+      ]
+    },
+    {
+      "name": "Database & Deployment",
+      "tasks": [
+        {
+          "id": "db-001",
+          "name": "Turso cloud database adapter",
+          "status": true,
+          "priority": "high",
+          "related_files": ["lib/db-turso.ts"]
+        },
+        {
+          "id": "db-002",
+          "name": "Better-sqlite3 local database",
+          "status": true,
+          "priority": "high",
+          "related_files": ["lib/db.ts"]
+        },
+        {
+          "id": "db-003",
+          "name": "Database schema migration support",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["lib/db.ts", "lib/db-turso.ts"]
+        },
+        {
+          "id": "deploy-001",
+          "name": "Vercel deployment configuration",
+          "status": true,
+          "priority": "high",
+          "related_files": ["next.config.ts", "docs/DEPLOY_VERCEL.md"]
+        },
+        {
+          "id": "deploy-002",
+          "name": "Docker containerization",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["Dockerfile", "docs/DEPLOYMENT.md"]
+        },
+        {
+          "id": "deploy-003",
+          "name": "docker-compose setup",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["docs/DEPLOYMENT.md"],
+          "notes": "Configuration example in docs; docker-compose.yml not committed"
+        }
+      ]
+    },
+    {
+      "name": "Admin Features",
+      "tasks": [
+        {
+          "id": "admin-001",
+          "name": "Admin panel interface",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["app/admin/page.tsx"]
+        },
+        {
+          "id": "admin-002",
+          "name": "View all sessions",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["app/api/admin/sessions/route.ts"]
+        },
+        {
+          "id": "admin-003",
+          "name": "View session messages",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["app/api/admin/session/[id]/messages/route.ts"]
+        },
+        {
+          "id": "admin-004",
+          "name": "Delete sessions",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["app/api/admin/session/[id]/route.ts"]
+        },
+        {
+          "id": "admin-005",
+          "name": "Bearer token authentication",
+          "status": true,
+          "priority": "high",
+          "related_files": ["lib/admin-auth.ts"]
+        }
+      ]
+    },
+    {
+      "name": "API Endpoints",
+      "tasks": [
+        {
+          "id": "api-001",
+          "name": "/api/chat (non-streaming)",
+          "status": true,
+          "priority": "high",
+          "related_files": ["app/api/chat/route.ts"]
+        },
+        {
+          "id": "api-002",
+          "name": "/api/chat/stream (SSE streaming)",
+          "status": true,
+          "priority": "high",
+          "related_files": ["app/api/chat/stream/route.ts"]
+        },
+        {
+          "id": "api-003",
+          "name": "/api/ollama (direct Ollama)",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["app/api/ollama/route.ts"]
+        },
+        {
+          "id": "api-004",
+          "name": "/api/sessions (list sessions)",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["app/api/sessions/route.ts"]
+        },
+        {
+          "id": "api-005",
+          "name": "/api/sessions/[id] (PATCH/DELETE)",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["app/api/sessions/[id]/route.ts"]
+        },
+        {
+          "id": "api-006",
+          "name": "/api/sessions/[id]/messages (GET)",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["app/api/sessions/[id]/messages/route.ts"]
+        },
+        {
+          "id": "api-007",
+          "name": "Admin API routes",
+          "status": true,
+          "priority": "medium",
+          "related_files": [
+            "app/api/admin/sessions/route.ts",
+            "app/api/admin/session/[id]/route.ts",
+            "app/api/admin/session/[id]/messages/route.ts"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "UX Enhancements",
+      "tasks": [
+        {
+          "id": "ux-001",
+          "name": "Next steps suggestion system",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["lib/next-steps.ts", "components/NextSteps.tsx"]
+        },
+        {
+          "id": "ux-002",
+          "name": "Thinking delay animations",
+          "status": true,
+          "priority": "low",
+          "related_files": ["lib/thinking-delay.ts"]
+        },
+        {
+          "id": "ux-003",
+          "name": "Response formatting",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["lib/response-formatter.ts"]
+        },
+        {
+          "id": "ux-004",
+          "name": "Toast notifications",
+          "status": true,
+          "priority": "low",
+          "related_files": ["components/Toast.tsx"]
+        },
+        {
+          "id": "ux-005",
+          "name": "User menu component",
+          "status": true,
+          "priority": "low",
+          "related_files": ["components/UserMenu.tsx"]
+        },
+        {
+          "id": "ux-006",
+          "name": "Message actions (copy, etc.)",
+          "status": true,
+          "priority": "low",
+          "related_files": ["components/MessageActions.tsx"]
+        }
+      ]
+    },
+    {
+      "name": "Optional/Advanced Features",
+      "tasks": [
+        {
+          "id": "advanced-001",
+          "name": "n8n webhook integration",
+          "status": true,
+          "priority": "low",
+          "related_files": ["docs/N8N_WORKFLOW_EXAMPLE.md"],
+          "notes": "Optional integration; configured via N8N_WEBHOOK_URL env"
+        },
+        {
+          "id": "advanced-002",
+          "name": "MCP servers configuration",
+          "status": true,
+          "priority": "low",
+          "related_files": [".cursor/mcp.json", "docs/MCP_SETUP.md"]
+        },
+        {
+          "id": "advanced-003",
+          "name": "Fetch MCP server",
+          "status": true,
+          "priority": "low",
+          "related_files": [".cursor/mcp.json"]
+        },
+        {
+          "id": "advanced-004",
+          "name": "Filesystem MCP server",
+          "status": true,
+          "priority": "low",
+          "related_files": [".cursor/mcp.json"]
+        },
+        {
+          "id": "advanced-005",
+          "name": "Session pinning",
+          "status": true,
+          "priority": "low",
+          "related_files": ["lib/chat-store.ts", "components/Sidebar.tsx"]
+        },
+        {
+          "id": "advanced-006",
+          "name": "Custom session titles",
+          "status": true,
+          "priority": "low",
+          "related_files": ["lib/chat-store.ts", "components/Sidebar.tsx"]
+        }
+      ]
+    },
+    {
+      "name": "Pending/Future Tasks",
+      "tasks": [
+        {
+          "id": "future-001",
+          "name": "Multi-user authentication system",
+          "status": false,
+          "priority": "low",
+          "notes": "Add user_id to sessions; implement user table"
+        },
+        {
+          "id": "future-002",
+          "name": "Automated testing suite",
+          "status": false,
+          "priority": "high",
+          "notes": "Unit tests for API routes and lib functions"
+        },
+        {
+          "id": "future-003",
+          "name": "E2E tests (Playwright)",
+          "status": false,
+          "priority": "medium",
+          "notes": "Test chat flow, streaming, session management"
+        },
+        {
+          "id": "future-004",
+          "name": "Accessibility improvements",
+          "status": false,
+          "priority": "medium",
+          "notes": "Keyboard navigation, screen reader support, ARIA labels"
+        },
+        {
+          "id": "future-005",
+          "name": "Mobile touch optimizations",
+          "status": false,
+          "priority": "medium",
+          "notes": "Touch-friendly UI adjustments, responsive layout improvements"
+        },
+        {
+          "id": "future-006",
+          "name": "n8n streaming support",
+          "status": false,
+          "priority": "low",
+          "notes": "Unify n8n and Ollama streaming in single API"
+        },
+        {
+          "id": "future-007",
+          "name": "Error retry classification system",
+          "status": false,
+          "priority": "high",
+          "notes": "Classify errors as retryable vs non-retryable; improve UI feedback"
+        },
+        {
+          "id": "future-008",
+          "name": "HTTPS/Caddy proxy setup",
+          "status": false,
+          "priority": "low",
+          "notes": "Production HTTPS configuration example"
+        },
+        {
+          "id": "future-009",
+          "name": "Search API workflow example",
+          "status": false,
+          "priority": "low",
+          "notes": "n8n workflow integrating external search API"
+        }
+      ]
+    },
+    {
+      "name": "Documentation",
+      "tasks": [
+        {
+          "id": "doc-001",
+          "name": "README.md",
+          "status": true,
+          "priority": "high",
+          "related_files": ["README.md"]
+        },
+        {
+          "id": "doc-002",
+          "name": "Deployment guide (Docker)",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["docs/DEPLOYMENT.md"]
+        },
+        {
+          "id": "doc-003",
+          "name": "Vercel deployment guide",
+          "status": true,
+          "priority": "high",
+          "related_files": ["docs/DEPLOY_VERCEL.md"]
+        },
+        {
+          "id": "doc-004",
+          "name": "MCP setup documentation",
+          "status": true,
+          "priority": "low",
+          "related_files": ["docs/MCP_SETUP.md"]
+        },
+        {
+          "id": "doc-005",
+          "name": "Backend code documentation",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["docs/BACKEND_CODE_ALL.md"]
+        },
+        {
+          "id": "doc-006",
+          "name": "Architecture documentation",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["docs/perplexity_share/01_ARCHITECTURE.md"]
+        },
+        {
+          "id": "doc-007",
+          "name": "API reference",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["docs/perplexity_share/02_API_REFERENCE.md"]
+        },
+        {
+          "id": "doc-008",
+          "name": "Database schema docs",
+          "status": true,
+          "priority": "medium",
+          "related_files": ["docs/perplexity_share/03_DATABASE.md"]
+        },
+        {
+          "id": "doc-009",
+          "name": "n8n workflow example",
+          "status": true,
+          "priority": "low",
+          "related_files": ["docs/N8N_WORKFLOW_EXAMPLE.md"]
+        }
+      ]
+    }
+  ]
+}
