@@ -15,6 +15,7 @@ export function getTursoClient() {
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS chat_sessions (
   id TEXT PRIMARY KEY,
+  user_id TEXT,
   created_at INTEGER,
   title TEXT,
   pinned INTEGER DEFAULT 0
@@ -56,6 +57,8 @@ export type DbRunner = {
   run(sql: string, ...args: (string | number | null)[]): Promise<void>
   get<T>(sql: string, ...args: (string | number | null)[]): Promise<T | undefined>
   all<T>(sql: string, ...args: (string | number | null)[]): Promise<T[]>
+  /** Run multiple statements atomically (batch on Turso, transaction on SQLite). */
+  runInTransaction(ops: { sql: string; args?: (string | number | null)[] }[]): Promise<void>
 }
 
 type InArgs = Array<string | number | null>
@@ -78,6 +81,12 @@ export async function getTursoDb(): Promise<DbRunner> {
       const a: InArgs | undefined = args.length ? args : undefined
       const rs = await c.execute(sql, a)
       return rs.rows as T[]
+    },
+    async runInTransaction(ops: { sql: string; args?: (string | number | null)[] }[]) {
+      if (ops.length === 0) return
+      await c.batch(
+        ops.map((o) => ({ sql: o.sql, args: (o.args ?? []) as InArgs }))
+      )
     },
   }
 }

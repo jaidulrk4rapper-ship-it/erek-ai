@@ -3,6 +3,7 @@ import type { DbRunner } from "./db-turso"
 const useTurso = !!process.env.TURSO_DATABASE_URL
 
 let cachedTurso: Promise<DbRunner> | null = null
+let cachedLocal: DbRunner | null = null
 
 export async function getDb(): Promise<DbRunner> {
   if (useTurso) {
@@ -10,6 +11,8 @@ export async function getDb(): Promise<DbRunner> {
     if (!cachedTurso) cachedTurso = getTursoDb()
     return cachedTurso
   }
+
+  if (cachedLocal) return cachedLocal
 
   const Database = require("better-sqlite3") as typeof import("better-sqlite3")
   const fs = require("fs") as typeof import("fs")
@@ -22,6 +25,7 @@ export async function getDb(): Promise<DbRunner> {
   db.exec(`
 CREATE TABLE IF NOT EXISTS chat_sessions (
   id TEXT PRIMARY KEY,
+  user_id TEXT,
   created_at INTEGER
 );
 
@@ -55,6 +59,9 @@ ON users(email);
   try {
     db.exec(`ALTER TABLE chat_sessions ADD COLUMN pinned INTEGER DEFAULT 0`)
   } catch {}
+  try {
+    db.exec(`ALTER TABLE chat_sessions ADD COLUMN user_id TEXT`)
+  } catch {}
 
   const runner: DbRunner = {
     run(sql: string, ...args: (string | number | null)[]) {
@@ -67,6 +74,15 @@ ON users(email);
     all<T>(sql: string, ...args: (string | number | null)[]) {
       return Promise.resolve(db.prepare(sql).all(...args) as T[])
     },
+    runInTransaction(ops: { sql: string; args?: (string | number | null)[] }[]) {
+      db.transaction(() => {
+        for (const o of ops) {
+          db.prepare(o.sql).run(...(o.args ?? []))
+        }
+      })()
+      return Promise.resolve()
+    },
   }
+  cachedLocal = runner
   return runner
 }

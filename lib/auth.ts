@@ -58,16 +58,18 @@ export const authOptions: AuthOptions = {
   callbacks: {
     async signIn({ user, account }: { user: { email?: string | null; name?: string | null }; account: Account | null }) {
       if (account?.provider === "google" || account?.provider === "github") {
+        if (!user.email) return false
+        const email = user.email.toLowerCase().trim()
         const db = await getDb()
         const existing = await db.get<{ id: string }>(
           "SELECT id FROM users WHERE email = ?",
-          user.email!.toLowerCase().trim()
+          email
         )
         if (!existing) {
           await db.run(
             "INSERT INTO users (id, email, name, provider, created_at) VALUES (?, ?, ?, ?, ?)",
             crypto.randomUUID(),
-            user.email!.toLowerCase().trim(),
+            email,
             user.name || "User",
             account.provider,
             Date.now()
@@ -79,14 +81,6 @@ export const authOptions: AuthOptions = {
     async session({ session, token }) {
       if (session?.user && token?.sub) {
         session.user.id = token.sub
-      }
-      if (session?.user && token?.email) {
-        const db = await getDb()
-        const dbUser = await db.get<{ id: string }>(
-          "SELECT id FROM users WHERE email = ?",
-          String(token.email).toLowerCase().trim()
-        )
-        if (dbUser) session.user.id = dbUser.id
       }
       return session
     },

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { checkAdminAuth } from "@/lib/admin-auth"
-import { deleteSession } from "@/lib/chat-store"
+import { deleteSessionAdmin } from "@/lib/chat-store"
 
 export const runtime = "nodejs"
 
@@ -14,7 +14,7 @@ export async function DELETE(
   const { id } = await params
   if (!id) return NextResponse.json({ error: "Session id required" }, { status: 400 })
   try {
-    await deleteSession(id)
+    await deleteSessionAdmin(id)
     return NextResponse.json({ ok: true })
   } catch (e) {
     return NextResponse.json({ error: "Failed to delete session" }, { status: 500 })
